@@ -61,11 +61,11 @@ class Give_Mailniaga_Sendy {
         add_filter( 'give_get_sections_addons', array( $this, 'register_sections' ) );
         add_filter( 'give_get_settings_addons', array( $this, 'register_settings' ) );
 
-        add_action( 'give_donation_form_before_submit', array( $this, 'donation_form_field' ), 100, 1 );
+        add_action( 'give_donation_form_before_submit', array( $this, 'donation_sendy_form_field' ), 100, 1 );
 
         add_action( 'cmb2_save_options-page_fields', array( $this, 'save_settings' ), 10, 4 );
 
-        add_action( 'give_insert_payment', array( $this, 'completed_donation_signup' ), 10, 2 );
+        add_action( 'give_insert_payment', array( $this, 'subscribe_to_sendy_list' ), 10, 2 );
 
         add_action( 'give_admin_field_mailniaga_sendy_list_select', array( $this, 'default_list_field' ), 10, 2 );
 
@@ -78,7 +78,7 @@ class Give_Mailniaga_Sendy {
      *
      * @param int $form_id
      */
-    public function donation_form_field( $form_id ) {
+    public function donation_sendy_form_field( $form_id ) {
 
         $enable_mailniaga_form  = give_get_meta( $form_id, '_give_mailniaga_sendy_enable', true );
         $disable_mailniaga_form = give_get_meta( $form_id, '_give_mailniaga_sendy_disable', true );
@@ -100,7 +100,7 @@ class Give_Mailniaga_Sendy {
         } elseif ( ! empty( $global_field_label ) ) {
             $this->checkout_label = trim( $global_field_label );
         } else {
-            $this->checkout_label = esc_html__( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga-sendy' );
+            $this->checkout_label = esc_html__( 'Subscribe to our newsletter', 'give-mailniaga-sendy' );
         }
 
         // Should the opt-on be checked or unchecked by default?
@@ -273,7 +273,7 @@ class Give_Mailniaga_Sendy {
                         'desc'       => __( 'This is the text shown by default next to the Mailniaga sign up checkbox. Yes, this can also be customized per form.', 'give-mailniaga-sendy' ),
                         'type'       => 'text',
                         'attributes' => array(
-                            'placeholder' => __( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga-sendy' ),
+                            'placeholder' => __( 'Subscribe to our newsletter', 'give-mailniaga-sendy' ),
                         ),
                     ),
                     array(
@@ -327,73 +327,54 @@ class Give_Mailniaga_Sendy {
      *
      * @return bool
      */
-	public function subscribe_email( $user_info = array(), $list_uids = false, $payment_id ) {
+	public function subscribe_email_sendy($user_info = array(), $list_uids = false, $payment_id) {
 
-		$api_token = give_get_option( 'give_mailniaga_sendy_api' );
+		$api_token = give_get_option('give_mailniaga_sendy_api');
 
 		// Sanity check: Check to ensure our API token is present before anything
-		if ( ! isset( $api_token ) || strlen( trim( $api_token ) ) === 0 ) {
+		if (!isset($api_token) || strlen(trim($api_token)) === 0) {
+			give_insert_payment_note($payment_id, __('Mailniaga API Token is missing.', 'give-mailniaga-sendy'));
 			return false;
 		}
 
-		if ( isset( $user_info['email'] ) && strlen( $user_info['email'] ) > 1 ) {
+		if (isset($user_info['email']) && strlen($user_info['email']) > 1) {
 
-			$api_endpoint = 'https://manage.mailniaga.com/api/v1/subscribers';
+			$api_endpoint = 'https://newsletter.aplikasiniaga.com/subscribe';
 
-			$lists = is_array( $list_uids ) ? $list_uids : array( $list_uids );
+			$lists = is_array($list_uids) ? $list_uids : array($list_uids);
 
-			foreach ( $lists as $list_uid ) {
+			foreach ($lists as $list_uid) {
 				$post_data = array(
-					'api_token'  => $api_token,
-					'list_uid'   => $list_uid,
-					'EMAIL'      => $user_info['email'],
-					'FIRST_NAME' => isset( $user_info['first_name'] ) ? $user_info['first_name'] : '',
-					'LAST_NAME'  => isset( $user_info['last_name'] ) ? $user_info['last_name'] : '',
-					'tag'        => 'givewp, donation',
+					'api_key'    => $api_token,
+					'list'       => $list_uid,
+					'boolean'    => 'true',
+					'email'      => $user_info['email'],
+					'name'       => isset($user_info['first_name']) && isset($user_info['last_name']) ? $user_info['first_name'] . ' ' . $user_info['last_name'] : (isset($user_info['first_name']) ? $user_info['first_name'] : (isset($user_info['last_name']) ? $user_info['last_name'] : '')),
+					'referrer'   => get_home_url(),
 				);
 
-				$ch = curl_init();
+				// Make the API request to subscribe the user to the Sendy list
+				$request = wp_remote_post($api_endpoint, array(
+					'body'    => $post_data,
+					'timeout' => 30,
+				));
 
-				curl_setopt( $ch, CURLOPT_URL, $api_endpoint );
-				curl_setopt( $ch, CURLOPT_POST, 1 );
-				curl_setopt( $ch, CURLOPT_POSTFIELDS, $post_data );
-				curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-				curl_setopt( $ch, CURLOPT_HTTPHEADER, array( 'Accept: application/json' ) );
+				// Check if the request was successful
+				if (!is_wp_error($request) && 200 == wp_remote_retrieve_response_code($request)) {
 
-				$response = curl_exec( $ch );
+					give_insert_payment_note($payment_id, 'API Response: ' . wp_remote_retrieve_body($request));
 
-				curl_close( $ch );
-
-				give_insert_payment_note( $payment_id, __( 'Mailniaga API Response: ', 'give-mailniaga-sendy' ) . $response );
-
-				if ( curl_errno( $ch ) ) {
-					give_record_log(
-						esc_html__( 'Mailniaga API Error', 'give-mailniaga-sendy' ),
-						curl_error( $ch ),
-						0,
-						'gateway_error'
-					);
-
-
-					give_insert_payment_note( $payment_id, __( 'Mailniaga API Error: ', 'give-mailniaga-sendy' ) . curl_error( $ch ) );
-
-					return false;
-				}
-
-				$decoded_response = json_decode( $response );
-
-				if ( ! isset( $decoded_response->success ) || ! $decoded_response->success ) {
-					return false;
+					$return = true;
+				} else {
+					give_insert_payment_note($payment_id, 'API Error Response: ' . wp_remote_retrieve_response_message($request));
 				}
 			}
 
 			return true;
 		}
-
+		give_insert_payment_note($payment_id, __('User email is missing or invalid.', 'give-mailniaga-sendy'));
 		return false;
 	}
-
-
 
 
 	/**
@@ -404,10 +385,11 @@ class Give_Mailniaga_Sendy {
      * @param $payment_id
      * @param $payment_data array
      */
-    public function completed_donation_signup( $payment_id, $payment_data ) {
+    public function subscribe_to_sendy_list( $payment_id, $payment_data ) {
 
         // check to see if the user has elected to subscribe.
-        if ( ! isset( $_POST['give_mailniaga_sendy_signup'] ) || 'on' !== $_POST['give_mailniaga_sendy_signup'] ) {
+        if ( ! isset( $_POST['give_mailniaga-sendy_signup'] ) || 'on' !== $_POST['give_mailniaga-sendy_signup'] ) {
+	        give_insert_payment_note($payment_id, __('Subscription not requested.', 'give-mailniaga-sendy'));
             return;
         }
 
@@ -427,11 +409,11 @@ class Give_Mailniaga_Sendy {
             $lists = array_unique( $form_lists );
             foreach ( $lists as $list ) {
                 // Subscribe the donor to the email lists.
-                $this->subscribe_email( $payment_data['user_info'], $list, $payment_id );
+                $this->subscribe_email_sendy( $payment_data['user_info'], $list, $payment_id );
             }
         } else {
             // Subscribe to single.
-            $this->subscribe_email( $payment_data['user_info'], $form_lists, $payment_id );
+            $this->subscribe_email_sendy( $payment_data['user_info'], $form_lists, $payment_id );
         }
 
     }
@@ -533,7 +515,7 @@ class Give_Mailniaga_Sendy {
 
                 <button class="give-reset-mailniaga-sendy-button button button-small"
                         style="float:left; margin: -2px 0 0 15px;"
-                        data-action="give_reset_mailniaga_lists"
+                        data-action="give_reset_mailniaga_sendy_lists"
                         data-field_type="checkbox"><?php esc_html_e( 'Refresh Lists', 'give-mailniaga-sendy' ); ?></button>
 
                 <span class="give-spinner spinner" style="float:left;margin: 0 0 0 10px;"></span>
@@ -675,7 +657,7 @@ class Give_Mailniaga_Sendy {
 
                     <button class="give-reset-mailniaga-sendy-button button-secondary"
                             style="margin:0 0 0 2px !important;"
-                            data-action="give_reset_mailniaga_lists"
+                            data-action="give_reset_mailniaga_sendy_lists"
                             data-field_type="select"><?php echo esc_html__( 'Refresh Lists', 'give-mailniaga-sendy' ); ?></button>
                     <span class="give-spinner spinner"></span>
 
@@ -752,7 +734,7 @@ class Give_Mailniaga_Sendy {
     /**
      * AJAX reset Mailniaga lists.
      */
-    public function give_reset_mailniaga_lists() {
+    public function give_reset_mailniaga_sendy_lists() {
 
         // Delete transient.
         delete_transient( 'give_mailniaga_sendy_lists' );

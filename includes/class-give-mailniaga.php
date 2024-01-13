@@ -100,7 +100,7 @@ class Give_Mailniaga_Newsletter {
         } elseif ( ! empty( $global_field_label ) ) {
             $this->checkout_label = trim( $global_field_label );
         } else {
-            $this->checkout_label = esc_html__( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga' );
+            $this->checkout_label = esc_html__( 'Subscribe to our newsletter', 'give-mailniaga' );
         }
 
         // Should the opt-on be checked or unchecked by default?
@@ -258,7 +258,7 @@ class Give_Mailniaga_Newsletter {
                         'desc'       => __( 'This is the text shown by default next to the Mailniaga sign up checkbox. Yes, this can also be customized per form.', 'give-mailniaga' ),
                         'type'       => 'text',
                         'attributes' => array(
-                            'placeholder' => __( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga' ),
+                            'placeholder' => __( 'Subscribe to our newsletter', 'give-mailniaga' ),
                         ),
                     ),
                     array(
@@ -758,4 +758,4 @@ class Give_Mailniaga_Newsletter {
 
 }
 
-return new give_mailniaga_Newsletter();
+return new Give_Mailniaga_Newsletter();

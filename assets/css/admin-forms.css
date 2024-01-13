@@ -1,0 +1,28 @@
+/**
+ * Give Constant Contact Admin Styles
+ */
+
+.give-mailniaga-list-wrap {
+	border: 1px solid #ccc;
+	background: #FDFDFD;
+	width: auto;
+	height: 200px;
+	overflow-y: scroll;
+	padding: 7px 10px;
+}
+
+.give-mailniaga-list-wrap label {
+	display: block;
+	margin-bottom: 3px;
+}
+
+.give-mailniaga-list-wrap label.group {
+	margin-left: 30px;
+	font-size: 13px;
+	font-style: italic;
+}
+
+.give-mailniaga-field-wrap .give-field-description {
+    font-size: 13px;
+    display:block;
+}

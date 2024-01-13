@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 1.2.2
  */
-class Give_Mailniaga_Newsletter {
+class Give_Mailniaga_Sendy {
 
     /**
      * The ID for this newsletter Add-on, such as 'mailniaga'.
@@ -49,7 +49,7 @@ class Give_Mailniaga_Newsletter {
      * @param string $_id
      * @param string $_label
      */
-    public function __construct( $_id = 'mailniaga', $_label = 'Mailniaga' ) {
+    public function __construct( $_id = 'mailniaga-sendy', $_label = 'Mailniaga v1' ) {
 
         $this->id    = $_id;
         $this->label = $_label;
@@ -67,9 +67,9 @@ class Give_Mailniaga_Newsletter {
 
         add_action( 'give_insert_payment', array( $this, 'completed_donation_signup' ), 10, 2 );
 
-        add_action( 'give_admin_field_mailniaga_list_select', array( $this, 'default_list_field' ), 10, 2 );
+        add_action( 'give_admin_field_mailniaga_sendy_list_select', array( $this, 'default_list_field' ), 10, 2 );
 
-        add_action( 'wp_ajax_give_reset_mailniaga_lists', array( $this, 'give_reset_mailniaga_lists' ) );
+        add_action( 'wp_ajax_give_reset_mailniaga_sendy_lists', array( $this, 'give_reset_mailniaga_sendy_lists' ) );
 
     }
 
@@ -80,8 +80,8 @@ class Give_Mailniaga_Newsletter {
      */
     public function donation_form_field( $form_id ) {
 
-        $enable_mailniaga_form  = give_get_meta( $form_id, '_give_mailniaga_enable', true );
-        $disable_mailniaga_form = give_get_meta( $form_id, '_give_mailniaga_disable', true );
+        $enable_mailniaga_form  = give_get_meta( $form_id, '_give_mailniaga_sendy_enable', true );
+        $disable_mailniaga_form = give_get_meta( $form_id, '_give_mailniaga_sendy_disable', true );
 
         // Check disable vars to see if this form should have the opt-in field.
         if (
@@ -91,8 +91,8 @@ class Give_Mailniaga_Newsletter {
             return;
         }
 
-        $global_field_label    = give_get_option( 'give_mailniaga_label' );
-        $custom_checkout_label = give_get_meta( $form_id, '_give_mailniaga_custom_label', true );
+        $global_field_label    = give_get_option( 'give_mailniaga_sendy_label' );
+        $custom_checkout_label = give_get_meta( $form_id, '_give_mailniaga_sendy_custom_label', true );
 
         // What's the label gonna be?
         if ( ! empty( $custom_checkout_label ) ) {
@@ -100,12 +100,12 @@ class Give_Mailniaga_Newsletter {
         } elseif ( ! empty( $global_field_label ) ) {
             $this->checkout_label = trim( $global_field_label );
         } else {
-            $this->checkout_label = esc_html__( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga' );
+            $this->checkout_label = esc_html__( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga-sendy' );
         }
 
         // Should the opt-on be checked or unchecked by default?
-        $form_checked_by_default   = give_get_meta( $form_id, '_give_mailniaga_checked_default', true );
-        $global_checked_by_default = give_get_option( 'give_mailniaga_checked_default' );
+        $form_checked_by_default   = give_get_meta( $form_id, '_give_mailniaga_sendy_checked_default', true );
+        $global_checked_by_default = give_get_option( 'give_mailniaga_sendy_checked_default' );
         $checked_option            = 'on';
 
         if ( ! empty( $form_checked_by_default ) ) {
@@ -116,7 +116,7 @@ class Give_Mailniaga_Newsletter {
         }
 
         ob_start(); ?>
-        <fieldset id="give_<?php echo $this->id . '_' . $form_id; ?>" class="give-mailniaga-fieldset">
+        <fieldset id="give_<?php echo $this->id . '_' . $form_id; ?>" class="give-mailniaga-sendy-fieldset">
             <p>
                 <label for="give_<?php echo $this->id . '_' . $form_id; ?>_signup">
                     <input name="give_<?php echo $this->id; ?>_signup"
@@ -136,24 +136,32 @@ class Give_Mailniaga_Newsletter {
      * @return array|bool
      */
 	public function get_lists() {
-		// Retrieve the Mailniaga API token from options
-		$api_token = give_get_option('give_mailniaga_api');
+
+		$api_key = give_get_option('give_mailniaga_sendy_api');
 
 		// Sanity check
-		if (empty($api_token)) {
+		if (empty($api_key)) {
 			return false;
 		}
 
 		// API endpoint
-		$api_endpoint = 'https://manage.mailniaga.com/api/v1/lists?api_token=' . $api_token;
+		$api_endpoint = 'https://newsletter.aplikasiniaga.com/api/lists/get-lists.php';
+
+		// API data
+		$api_data = array(
+			'api_key'  => $api_key,
+			'brand_id' => give_get_option( 'give_mailniaga_sendy_brand' ),
+		);
 
 		// Fetch lists from the API
-		$response = wp_remote_get($api_endpoint);
+		$response = wp_remote_post($api_endpoint, array(
+			'body' => $api_data,
+		));
 
 		// Check for errors
 		if (is_wp_error($response)) {
 			if (!wp_doing_ajax()) {
-				echo '<div class="error updated"><p>' . esc_html__('Error fetching lists from Mailniaga API.', 'give-mailniaga') . '</p></div>';
+				echo '<div class="error updated"><p>' . esc_html__('Error fetching lists from the API.', 'your-text-domain') . '</p></div>';
 			}
 			return false;
 		}
@@ -164,7 +172,7 @@ class Give_Mailniaga_Newsletter {
 		// Check if the response is valid and contains the expected data
 		if (empty($list_data) || !is_array($list_data)) {
 			if (!wp_doing_ajax()) {
-				echo '<div class="error updated"><p>' . esc_html__('Invalid response from Mailniaga API.', 'give-mailniaga') . '</p></div>';
+				echo '<div class="error updated"><p>' . esc_html__('Invalid response from the API.', 'your-text-domain') . '</p></div>';
 			}
 			return false;
 		}
@@ -172,16 +180,17 @@ class Give_Mailniaga_Newsletter {
 		// Create array for select field
 		$lists = array();
 
-		// Extract uuid and name from each list
+		// Extract id and name from each list
 		foreach ($list_data as $list) {
-			if (isset($list['uid']) && isset($list['name'])) {
-				$lists[$list['uid']] = $list['name'];
+			if (isset($list['id']) && isset($list['name'])) {
+				$lists[$list['id']] = $list['name'];
 			}
 		}
 
 		// Return the list data
 		return $lists;
 	}
+
 
 
     /**
@@ -195,7 +204,7 @@ class Give_Mailniaga_Newsletter {
      *
      */
     public function register_sections( $sections ) {
-        $sections['mailniaga-settings'] = __( 'Mailniaga v2 Settings', 'give-mailniaga' );
+        $sections['mailniaga-sendy-settings'] = __( 'Mailniaga v1 Settings', 'give-mailniaga-sendy' );
 
         return $sections;
     }
@@ -211,54 +220,60 @@ class Give_Mailniaga_Newsletter {
 
         switch ( give_get_current_setting_section() ) {
 
-            case 'mailniaga-settings':
+            case 'mailniaga-sendy-settings':
                 $settings = array(
                     array(
-                        'id'   => 'give_title_mailniaga',
+                        'id'   => 'give_title_mailniaga_sendy',
                         'type' => 'title',
                     ),
                     array(
-                        'id'   => 'give_mailniaga_settings',
-                        'name' => __( 'Mailniaga Settings', 'give-mailniaga' ),
+                        'id'   => 'give_mailniaga_sendy_settings',
+                        'name' => __( 'Mailniaga Settings', 'give-mailniaga-sendy' ),
                         'desc' => '<hr>',
                         'type' => 'give_title',
                     ),
                     array(
-                        'id'   => 'give_mailniaga_api',
-                        'name' => __( 'API Key', 'give-mailniaga' ),
-                        'desc' => __( 'Enter your Mailniaga API Key. You will need to register with the Mailniaga Developer Network to get an API Key.', 'give-mailniaga' ),
+                        'id'   => 'give_mailniaga_sendy_api',
+                        'name' => __( 'API Key', 'give-mailniaga-sendy' ),
+                        'desc' => __( 'Enter your Mailniaga API Key. You will need to register with the Mailniaga Developer Network to get an API Key.', 'give-mailniaga-sendy' ),
                         'type' => 'text',
                     ),
+	                array(
+		                'id'   => 'give_mailniaga_sendy_brand',
+		                'name' => __( 'Brand ID', 'give-mailniaga-sendy' ),
+		                'desc' => __( 'Enter your Mailniaga Brand Id. Brand ID can be found on your url app?i=*', 'give-mailniaga' ),
+		                'type' => 'number',
+	                ),
                     array(
-                        'id'   => 'give_mailniaga_show_checkout_signup',
-                        'name' => __( 'Enable Globally?', 'give-mailniaga' ),
-                        'desc' => __( 'Allow customers to sign-up for the list selected below on all forms? Note: the list(s) can be customized per form.', 'give-mailniaga' ),
+                        'id'   => 'give_mailniaga_sendy_show_checkout_signup',
+                        'name' => __( 'Enable Globally?', 'give-mailniaga-sendy' ),
+                        'desc' => __( 'Allow customers to sign-up for the list selected below on all forms? Note: the list(s) can be customized per form.', 'give-mailniaga-sendy' ),
                         'type' => 'checkbox',
                     ),
                     array(
-                        'id'      => 'give_mailniaga_checked_default',
-                        'name'    => __( 'Opt-in Default', 'give-mailniaga' ),
-                        'desc'    => __( 'Would you like the newsletter opt-in checkbox checked by default? This option can be customized per form.', 'give-mailniaga' ),
+                        'id'      => 'give_mailniaga_sendy_checked_default',
+                        'name'    => __( 'Opt-in Default', 'give-mailniaga-sendy' ),
+                        'desc'    => __( 'Would you like the newsletter opt-in checkbox checked by default? This option can be customized per form.', 'give-mailniaga-sendy' ),
                         'options' => array(
-                            'yes' => __( 'Checked', 'give-mailniaga' ),
-                            'no'  => __( 'Unchecked', 'give-mailniaga' ),
+                            'yes' => __( 'Checked', 'give-mailniaga-sendy' ),
+                            'no'  => __( 'Unchecked', 'give-mailniaga-sendy' ),
                         ),
                         'default' => 'yes',
                         'type'    => 'radio_inline',
                     ),
                     array(
-                        'id'   => 'give_mailniaga_list',
-                        'name' => __( 'Default List', 'give-mailniaga' ),
-                        'desc' => __( 'Enter your List ID. It will be in the form of a number.  Note: the list(s) can be customized per form.', 'give-mailniaga' ),
-                        'type' => 'mailniaga_list_select',
+                        'id'   => 'give_mailniaga_sendy_list',
+                        'name' => __( 'Default List', 'give-mailniaga-sendy' ),
+                        'desc' => __( 'Enter your List ID. It will be in the form of a number.  Note: the list(s) can be customized per form.', 'give-mailniaga-sendy' ),
+                        'type' => 'mailniaga_sendy_list_select',
                     ),
                     array(
-                        'id'         => 'give_mailniaga_label',
-                        'name'       => __( 'Global Label', 'give-mailniaga' ),
-                        'desc'       => __( 'This is the text shown by default next to the Mailniaga sign up checkbox. Yes, this can also be customized per form.', 'give-mailniaga' ),
+                        'id'         => 'give_mailniaga_sendy_label',
+                        'name'       => __( 'Global Label', 'give-mailniaga-sendy' ),
+                        'desc'       => __( 'This is the text shown by default next to the Mailniaga sign up checkbox. Yes, this can also be customized per form.', 'give-mailniaga-sendy' ),
                         'type'       => 'text',
                         'attributes' => array(
-                            'placeholder' => __( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga' ),
+                            'placeholder' => __( 'Subscribe to our newsletter MailNiaga', 'give-mailniaga-sendy' ),
                         ),
                     ),
                     array(
@@ -283,10 +298,10 @@ class Give_Mailniaga_Newsletter {
      */
     public function save_settings() {
 
-        $api_option = give_get_option( 'give_mailniaga_api' );
+        $api_option = give_get_option( 'give_mailniaga_sendy_api' );
 
         if ( isset( $api_option ) && ! empty( $api_option ) ) {
-            delete_transient( 'give_mailniaga_list_data' );
+            delete_transient( 'give_mailniaga_sendy_list_data' );
         }
 
     }
@@ -296,7 +311,7 @@ class Give_Mailniaga_Newsletter {
      */
     public function show_checkout_signup() {
 
-        $show_checkout_signup = give_get_option( 'give_mailniaga_show_checkout_signup' );
+        $show_checkout_signup = give_get_option( 'give_mailniaga_sendy_show_checkout_signup' );
 
         return ! empty( $show_checkout_signup );
     }
@@ -314,7 +329,7 @@ class Give_Mailniaga_Newsletter {
      */
 	public function subscribe_email( $user_info = array(), $list_uids = false, $payment_id ) {
 
-		$api_token = give_get_option( 'give_mailniaga_api' );
+		$api_token = give_get_option( 'give_mailniaga_sendy_api' );
 
 		// Sanity check: Check to ensure our API token is present before anything
 		if ( ! isset( $api_token ) || strlen( trim( $api_token ) ) === 0 ) {
@@ -349,18 +364,18 @@ class Give_Mailniaga_Newsletter {
 
 				curl_close( $ch );
 
-				give_insert_payment_note( $payment_id, __( 'Mailniaga API Response: ', 'give-mailniaga' ) . $response );
+				give_insert_payment_note( $payment_id, __( 'Mailniaga API Response: ', 'give-mailniaga-sendy' ) . $response );
 
 				if ( curl_errno( $ch ) ) {
 					give_record_log(
-						esc_html__( 'Mailniaga API Error', 'give-mailniaga' ),
+						esc_html__( 'Mailniaga API Error', 'give-mailniaga-sendy' ),
 						curl_error( $ch ),
 						0,
 						'gateway_error'
 					);
 
 
-					give_insert_payment_note( $payment_id, __( 'Mailniaga API Error: ', 'give-mailniaga' ) . curl_error( $ch ) );
+					give_insert_payment_note( $payment_id, __( 'Mailniaga API Error: ', 'give-mailniaga-sendy' ) . curl_error( $ch ) );
 
 					return false;
 				}
@@ -392,7 +407,7 @@ class Give_Mailniaga_Newsletter {
     public function completed_donation_signup( $payment_id, $payment_data ) {
 
         // check to see if the user has elected to subscribe.
-        if ( ! isset( $_POST['give_mailniaga_signup'] ) || 'on' !== $_POST['give_mailniaga_signup'] ) {
+        if ( ! isset( $_POST['give_mailniaga_sendy_signup'] ) || 'on' !== $_POST['give_mailniaga_sendy_signup'] ) {
             return;
         }
 
@@ -401,11 +416,11 @@ class Give_Mailniaga_Newsletter {
         // Check if $form_lists is set
         if ( empty( $form_lists ) ) {
             // Not set so use global list.
-            $form_lists = array( 0 => give_get_option( 'give_mailniaga_list' ) );
+            $form_lists = array( 0 => give_get_option( 'give_mailniaga_sendy_list' ) );
         }
 
         // Add meta to the donation post that this donation opted-in to CC.
-        add_post_meta( $payment_id, '_give_mailniaga_donation_optin_status', $form_lists );
+        add_post_meta( $payment_id, '_give_mailniaga_sendy_donation_optin_status', $form_lists );
 
         // Subscribe if array.
         if ( is_array( $form_lists ) ) {
@@ -430,27 +445,27 @@ class Give_Mailniaga_Newsletter {
         global $post;
 
         // Add an nonce field so we can check for it later.
-        wp_nonce_field( 'give_mailniaga_meta_box', 'give_mailniaga_meta_box_nonce' );
+        wp_nonce_field( 'give_mailniaga_sendy_meta_box', 'give_mailniaga_sendy_meta_box_nonce' );
 
         // Using a custom label?
-        $custom_label = give_get_meta( $post->ID, '_give_mailniaga_custom_label', true );
+        $custom_label = give_get_meta( $post->ID, '_give_mailniaga_sendy_custom_label', true );
 
         // Global label
-        $global_label = give_get_option( 'give_mailniaga_label', esc_html__( 'Signup for the MailNiaga', 'give-mailniaga' ) );
+        $global_label = give_get_option( 'give_mailniaga_sendy_label', esc_html__( 'Signup for the MailNiaga', 'give-mailniaga-sendy' ) );
 
         // Globally enabled option
-        $globally_enabled = give_get_option( 'give_mailniaga_show_checkout_signup' );
-        $enable_option    = give_get_meta( $post->ID, '_give_mailniaga_enable', true );
-        $disable_option   = give_get_meta( $post->ID, '_give_mailniaga_disable', true );
-        $checked_option   = give_get_meta( $post->ID, '_give_mailniaga_checked_default', true );
+        $globally_enabled = give_get_option( 'give_mailniaga_sendy_show_checkout_signup' );
+        $enable_option    = give_get_meta( $post->ID, '_give_mailniaga_sendy_enable', true );
+        $disable_option   = give_get_meta( $post->ID, '_give_mailniaga_sendy_disable', true );
+        $checked_option   = give_get_meta( $post->ID, '_give_mailniaga_sendy_checked_default', true );
 
         // Output option to DISABLE CC for this form
         if ( give_is_setting_enabled( $globally_enabled ) ) {
             ?>
             <p style="margin: 1em 0 0;"><label>
-                    <input type="checkbox" name="_give_mailniaga_disable" class="give-mailniaga-disable"
+                    <input type="checkbox" name="_give_mailniaga_sendy_disable" class="give-mailniaga-sendy-disable"
                            value="true" <?php echo checked( 'true', $disable_option, false ); ?>>
-                    <?php echo '&nbsp;' . esc_html__( 'Disable Mailniaga Opt-in', 'give-mailniaga' ); ?>
+                    <?php echo '&nbsp;' . esc_html__( 'Disable Mailniaga Opt-in', 'give-mailniaga-sendy' ); ?>
                 </label></p>
 
             <?php
@@ -458,73 +473,73 @@ class Give_Mailniaga_Newsletter {
             // Output option to ENABLE CC for this form
             ?>
             <p style="margin: 1em 0 0;"><label>
-                    <input type="checkbox" name="_give_mailniaga_enable" class="give-mailniaga-enable"
+                    <input type="checkbox" name="_give_mailniaga_sendy_enable" class="give-mailniaga-sendy-enable"
                            value="true" <?php echo checked( 'true', $enable_option, false ); ?>>
-                    <?php echo '&nbsp;' . esc_html__( 'Enable Mailniaga Opt-in', 'give-mailniaga' ); ?>
+                    <?php echo '&nbsp;' . esc_html__( 'Enable Mailniaga Opt-in', 'give-mailniaga-sendy' ); ?>
                 </label></p>
             <?php
         }
 
         // Display the form, using the current value.
         ?>
-        <div class="give-mailniaga-field-wrap" <?php echo( $globally_enabled == false && empty( $enable_option ) ? "style='display:none;'" : '' ); ?>>
+        <div class="give-mailniaga-sendy-field-wrap" <?php echo( $globally_enabled == false && empty( $enable_option ) ? "style='display:none;'" : '' ); ?>>
             <p>
-                <label for="_give_mailniaga_custom_label"
-                       style="font-weight:bold;"><?php echo esc_html__( 'Custom Label', 'give-mailniaga' ); ?></label>
+                <label for="_give_mailniaga_sendy_custom_label"
+                       style="font-weight:bold;"><?php echo esc_html__( 'Custom Label', 'give-mailniaga-sendy' ); ?></label>
                 <span class="give-field-description"
-                      style="margin: 0 0 10px;"><?php echo esc_html__( 'Customize the label for the Mailniaga opt-in checkbox', 'give-mailniaga' ); ?></span>
-                <input type="text" id="_give_mailniaga_custom_label" name="_give_mailniaga_custom_label"
+                      style="margin: 0 0 10px;"><?php echo esc_html__( 'Customize the label for the Mailniaga opt-in checkbox', 'give-mailniaga-sendy' ); ?></span>
+                <input type="text" id="_give_mailniaga_sendy_custom_label" name="_give_mailniaga_sendy_custom_label"
                        value="<?php echo esc_attr( $custom_label ); ?>"
                        placeholder="<?php echo esc_attr( $global_label ); ?>" size="25"/>
             </p>
 
             <div>
-                <label for="_give_mailniaga_checked_default"
-                       style="font-weight:bold;"><?php esc_html_e( 'Opt-in Default', 'give-mailniaga' ); ?></label>
+                <label for="_give_mailniaga_sendy_checked_default"
+                       style="font-weight:bold;"><?php esc_html_e( 'Opt-in Default', 'give-mailniaga-sendy' ); ?></label>
                 <span class="give-field-description"
-                      style="margin: 0 0 10px;"><?php esc_html_e( 'Customize the newsletter opt-in option for this form.', 'give-mailniaga' ); ?></span>
+                      style="margin: 0 0 10px;"><?php esc_html_e( 'Customize the newsletter opt-in option for this form.', 'give-mailniaga-sendy' ); ?></span>
 
                 <ul class="give-radio-list give-list">
                     <li>
-                        <input type="radio" class="give-option" name="_give_mailniaga_checked_default"
-                               id="give_mailniaga_checked_default1"
+                        <input type="radio" class="give-option" name="_give_mailniaga_sendy_checked_default"
+                               id="give_mailniaga_sendy_checked_default1"
                                value="" <?php echo checked( '', $checked_option, false ); ?>>
                         <label
-                            for="give_mailniaga_checked_default1"><?php esc_html_e( 'Global Option', 'give-mailniaga' ); ?></label>
+                            for="give_mailniaga_sendy_checked_default1"><?php esc_html_e( 'Global Option', 'give-mailniaga-sendy' ); ?></label>
                     </li>
 
                     <li>
-                        <input type="radio" class="give-option" name="_give_mailniaga_checked_default"
-                               id="give_mailniaga_checked_default2"
+                        <input type="radio" class="give-option" name="_give_mailniaga_sendy_checked_default"
+                               id="give_mailniaga_sendy_checked_default2"
                                value="yes" <?php echo checked( 'yes', $checked_option, false ); ?>>
                         <label
-                            for="give_mailniaga_checked_default2"><?php esc_html_e( 'Checked', 'give-mailniaga' ); ?></label>
+                            for="give_mailniaga_sendy_checked_default2"><?php esc_html_e( 'Checked', 'give-mailniaga-sendy' ); ?></label>
                     </li>
                     <li>
-                        <input type="radio" class="give-option" name="_give_mailniaga_checked_default"
-                               id="give_mailniaga_checked_default3"
+                        <input type="radio" class="give-option" name="_give_mailniaga_sendy_checked_default"
+                               id="give_mailniaga_sendy_checked_default3"
                                value="no" <?php echo checked( 'no', $checked_option, false ); ?>>
                         <label
-                            for="give_mailniaga_checked_default3"><?php esc_html_e( 'Unchecked', 'give-mailniaga' ); ?></label>
+                            for="give_mailniaga_sendy_checked_default3"><?php esc_html_e( 'Unchecked', 'give-mailniaga-sendy' ); ?></label>
                     </li>
                 </ul>
 
             </div>
 
             <div>
-                <label for="give_mailniaga_lists"
-                       style="font-weight:bold; float:left;"><?php esc_html_e( 'Email Lists', 'give-mailniaga' ); ?>
+                <label for="give_mailniaga_sendy_lists"
+                       style="font-weight:bold; float:left;"><?php esc_html_e( 'Email Lists', 'give-mailniaga-sendy' ); ?>
                 </label>
 
-                <button class="give-reset-mailniaga-button button button-small"
+                <button class="give-reset-mailniaga-sendy-button button button-small"
                         style="float:left; margin: -2px 0 0 15px;"
                         data-action="give_reset_mailniaga_lists"
-                        data-field_type="checkbox"><?php esc_html_e( 'Refresh Lists', 'give-mailniaga' ); ?></button>
+                        data-field_type="checkbox"><?php esc_html_e( 'Refresh Lists', 'give-mailniaga-sendy' ); ?></button>
 
                 <span class="give-spinner spinner" style="float:left;margin: 0 0 0 10px;"></span>
 
                 <span class="give-field-description"
-                      style="margin: 10px 0; clear: both;"><?php esc_html_e( 'Customize the list(s) you wish donors to subscribe to if they opt-in.', 'give-mailniaga' ); ?>
+                      style="margin: 10px 0; clear: both;"><?php esc_html_e( 'Customize the list(s) you wish donors to subscribe to if they opt-in.', 'give-mailniaga-sendy' ); ?>
 			    </span>
 
                 <?php
@@ -533,11 +548,11 @@ class Give_Mailniaga_Newsletter {
 
                 // No post meta yet? Default to global.
                 if ( isset( $checked[0] ) && empty( $checked[0] ) ) {
-                    $checked = array( 0 => give_get_option( 'give_mailniaga_list' ) );
+                    $checked = array( 0 => give_get_option( 'give_mailniaga_sendy_list' ) );
                 }
                 ?>
 
-                <div class="give-mailniaga-list-wrap">
+                <div class="give-mailniaga-sendy-list-wrap">
                     <?php
                     if ( $lists = $this->get_lists() ) :
                         foreach ( $lists as $list_id => $list_name ) {
@@ -575,12 +590,12 @@ class Give_Mailniaga_Newsletter {
          * because the save_post action can be triggered at other times.
          */
         // Check if our nonce is set.
-        if ( ! isset( $_POST['give_mailniaga_meta_box_nonce'] ) ) {
+        if ( ! isset( $_POST['give_mailniaga_sendy_meta_box_nonce'] ) ) {
             return false;
         }
 
         // Verify that the nonce is valid.
-        if ( ! wp_verify_nonce( $_POST['give_mailniaga_meta_box_nonce'], 'give_mailniaga_meta_box' ) ) {
+        if ( ! wp_verify_nonce( $_POST['give_mailniaga_sendy_meta_box_nonce'], 'give_mailniaga_sendy_meta_box' ) ) {
             return false;
         }
 
@@ -604,18 +619,18 @@ class Give_Mailniaga_Newsletter {
 
         // OK, its safe for us to save the data now.
         // Sanitize the user input.
-        $give_mailniaga_custom_label = isset( $_POST['_give_mailniaga_custom_label'] ) ? sanitize_text_field( $_POST['_give_mailniaga_custom_label'] ) : '';
-        $give_mailniaga_custom_lists = isset( $_POST['_give_mailniaga'] ) ? $_POST['_give_mailniaga'] : give_get_option( 'give_mailniaga_list' );
-        $give_mailniaga_enable       = isset( $_POST['_give_mailniaga_enable'] ) ? esc_html( $_POST['_give_mailniaga_enable'] ) : '';
-        $give_mailniaga_disable      = isset( $_POST['_give_mailniaga_disable'] ) ? esc_html( $_POST['_give_mailniaga_disable'] ) : '';
-        $give_mailniaga_checked      = isset( $_POST['_give_mailniaga_checked_default'] ) ? esc_html( $_POST['_give_mailniaga_checked_default'] ) : '';
+        $give_mailniaga_sendy_custom_label = isset( $_POST['_give_mailniaga_sendy_custom_label'] ) ? sanitize_text_field( $_POST['_give_mailniaga_sendy_custom_label'] ) : '';
+        $give_mailniaga_sendy_custom_lists = isset( $_POST['_give_mailniaga_sendy'] ) ? $_POST['_give_mailniaga_sendy'] : give_get_option( 'give_mailniaga_sendy_list' );
+        $give_mailniaga_sendy_enable       = isset( $_POST['_give_mailniaga_sendy_enable'] ) ? esc_html( $_POST['_give_mailniaga_sendy_enable'] ) : '';
+        $give_mailniaga_sendy_disable      = isset( $_POST['_give_mailniaga_sendy_disable'] ) ? esc_html( $_POST['_give_mailniaga_sendy_disable'] ) : '';
+        $give_mailniaga_sendy_checked      = isset( $_POST['_give_mailniaga_sendy_checked_default'] ) ? esc_html( $_POST['_give_mailniaga_sendy_checked_default'] ) : '';
 
         // Update the meta fields.
-        update_post_meta( $post_id, '_give_mailniaga_custom_label', $give_mailniaga_custom_label );
-        update_post_meta( $post_id, '_give_mailniaga', $give_mailniaga_custom_lists );
-        update_post_meta( $post_id, '_give_mailniaga_enable', $give_mailniaga_enable );
-        update_post_meta( $post_id, '_give_mailniaga_disable', $give_mailniaga_disable );
-        update_post_meta( $post_id, '_give_mailniaga_checked_default', $give_mailniaga_checked );
+        update_post_meta( $post_id, '_give_mailniaga_sendy_custom_label', $give_mailniaga_sendy_custom_label );
+        update_post_meta( $post_id, '_give_mailniaga_sendy', $give_mailniaga_sendy_custom_lists );
+        update_post_meta( $post_id, '_give_mailniaga_sendy_enable', $give_mailniaga_sendy_enable );
+        update_post_meta( $post_id, '_give_mailniaga_sendy_disable', $give_mailniaga_sendy_disable );
+        update_post_meta( $post_id, '_give_mailniaga_sendy_checked_default', $give_mailniaga_sendy_checked );
 
     }
 
@@ -644,7 +659,7 @@ class Give_Mailniaga_Newsletter {
 
         ob_start();
         ?>
-        <tr valign="top" class="give-mailniaga-lists">
+        <tr valign="top" class="give-mailniaga-sendy-lists">
             <th scope="row" class="titledesc">
                 <label for="<?php echo "{$field['id']}_day"; ?>">
                     <?php echo esc_attr( $field['name'] ); ?>
@@ -653,19 +668,19 @@ class Give_Mailniaga_Newsletter {
             <td class="give-forminp give-forminp-api_key">
                 <?php if ( ! empty( $list_options ) ) : ?>
 
-                    <select class="give-mailniaga-list-select" name="<?php echo "{$field['id']}"; ?>"
+                    <select class="give-mailniaga-sendy-list-select" name="<?php echo "{$field['id']}"; ?>"
                             id="<?php echo "{$field['id']}"; ?>">
                         <?php echo $list_options; ?>
                     </select>
 
-                    <button class="give-reset-mailniaga-button button-secondary"
+                    <button class="give-reset-mailniaga-sendy-button button-secondary"
                             style="margin:0 0 0 2px !important;"
                             data-action="give_reset_mailniaga_lists"
-                            data-field_type="select"><?php echo esc_html__( 'Refresh Lists', 'give-mailniaga' ); ?></button>
+                            data-field_type="select"><?php echo esc_html__( 'Refresh Lists', 'give-mailniaga-sendy' ); ?></button>
                     <span class="give-spinner spinner"></span>
 
                 <?php else : ?>
-                    <p><?php _e( 'Your Mailniaga lists will display here once pulled from the API. Please enter valid API keys above to retrieve your mailing lists.', 'give-mailniaga' ); ?></p>
+                    <p><?php _e( 'Your Mailniaga lists will display here once pulled from the API. Please enter valid API keys above to retrieve your mailing lists.', 'give-mailniaga-sendy' ); ?></p>
 
                 <?php endif; ?>
                 <p class="give-field-description"><?php echo "{$field['desc']}"; ?></p>
@@ -687,16 +702,19 @@ class Give_Mailniaga_Newsletter {
      * @return string
      */
 	public function get_list_options( $lists, $value = array(), $field_type = 'select' ) {
-
-
 		$options = '';
 
-		// Get API token from give_mailniaga_api option
-		$api_token = give_get_option( 'give_mailniaga_api' );
-
 		// Make API request to fetch lists
-		$api_url = 'https://manage.mailniaga.com/api/v1/lists?api_token=' . $api_token;
-		$api_response = wp_remote_get( $api_url );
+		$api_url = 'https://newsletter.aplikasiniaga.com/api/lists/get-lists.php';
+		$api_data = array(
+			'api_key'        => give_get_option( 'give_mailniaga_sendy_api' ),
+			'brand_id'       => give_get_option( 'give_mailniaga_sendy_brand' ),
+			'include_hidden' => 'no', // Change to 'yes' if you want to include hidden lists
+		);
+
+		$api_response = wp_remote_post( $api_url, array(
+			'body' => $api_data,
+		) );
 
 		if ( is_wp_error( $api_response ) ) {
 			// Handle error, you can log or display a message
@@ -717,17 +735,18 @@ class Give_Mailniaga_Newsletter {
 		if ( 'select' === $field_type ) {
 			// Select options
 			foreach ( $lists as $list ) {
-				$options .= '<option value="' . esc_attr( $list['uid'] ) . '"' . selected( true, in_array( $list['uid'], $value ), false ) . '>' . esc_html( $list['name'] ) . '</option>';
+				$options .= '<option value="' . esc_attr( $list['id'] ) . '"' . selected( true, in_array( $list['id'], $value ), false ) . '>' . esc_html( $list['name'] ) . '</option>';
 			}
 		} else {
 			// Checkboxes.
 			foreach ( $lists as $list ) {
-				$options .= '<label class="list"><input type="checkbox" name="_give_' . esc_attr( $this->id ) . '[]"  value="' . esc_attr( $list['uid'] ) . '" ' . checked( true, in_array( $list['uid'], $value ), false ) . '> <span>' . esc_html( $list['name'] ) . '</span></label>';
+				$options .= '<label class="list"><input type="checkbox" name="_give_' . esc_attr( $this->id ) . '[]"  value="' . esc_attr( $list['id'] ) . '" ' . checked( true, in_array( $list['id'], $value ), false ) . '> <span>' . esc_html( $list['name'] ) . '</span></label>';
 			}
 		}
 
 		return $options;
 	}
+
 
 
     /**
@@ -736,15 +755,15 @@ class Give_Mailniaga_Newsletter {
     public function give_reset_mailniaga_lists() {
 
         // Delete transient.
-        delete_transient( 'give_mailniaga_lists' );
+        delete_transient( 'give_mailniaga_sendy_lists' );
 
         $field_type = isset( $_POST['field_type'] ) ? give_clean( $_POST['field_type'] ) : '';
         $post_id    = isset( $_POST['post_id'] ) ? give_clean( $_POST['post_id'] ) : '';
 
         if ( 'select' === $field_type ) {
-            $lists = $this->get_list_options( $this->get_lists(), give_get_option( 'give_mailniaga_list' ) );
+            $lists = $this->get_list_options( $this->get_lists(), give_get_option( 'give_mailniaga_sendy_list' ) );
         } elseif ( ! empty( $post_id ) ) {
-            $lists = $this->get_list_options( $this->get_lists(), give_get_meta( $post_id, '_give_mailniaga', true ), 'checkboxes' );
+            $lists = $this->get_list_options( $this->get_lists(), give_get_meta( $post_id, '_give_mailniaga_sendy', true ), 'checkboxes' );
         } else {
             wp_send_json_error();
         }
@@ -758,4 +777,4 @@ class Give_Mailniaga_Newsletter {
 
 }
 
-return new give_mailniaga_Newsletter();
+return new Give_Mailniaga_Sendy();

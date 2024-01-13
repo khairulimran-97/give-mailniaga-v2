@@ -16,19 +16,19 @@ jQuery.noConflict();
 	 *
 	 *  @since: 1.0
 	 */
-	var toggle_mailniaga_fields = function () {
+	var toggle_mailniaga_sendy_fields = function () {
 
-		var cc_enable_option = $( '.give-mailniaga-enable' );
-		var cc_disable_option = $( '.give-mailniaga-disable' );
+		var cc_enable_option = $( '.give-mailniaga-sendy-enable' );
+		var cc_disable_option = $( '.give-mailniaga-sendy-disable' );
 
 		cc_enable_option.on( 'change', function () {
 
 			var cc_enable_option_val = $(this ).prop('checked');
 
 			if ( cc_enable_option_val === false ) {
-				$( '.give-mailniaga-field-wrap' ).slideUp('fast');
+				$( '.give-mailniaga-sendy-field-wrap' ).slideUp('fast');
 			} else {
-				$( '.give-mailniaga-field-wrap' ).slideDown('fast');
+				$( '.give-mailniaga--sendy-field-wrap' ).slideDown('fast');
 			}
 
 		} ).change();
@@ -38,9 +38,9 @@ jQuery.noConflict();
 			var cc_disable_option_val = $(this ).prop('checked');
 
 			if ( cc_disable_option_val === false ) {
-				$( '.give-mailniaga-field-wrap' ).slideDown('fast');
+				$( '.give-mailniaga-sendy-field-wrap' ).slideDown('fast');
 			} else {
-				$( '.give-mailniaga-field-wrap' ).slideUp('fast');
+				$( '.give-mailniaga-sendy-field-wrap' ).slideUp('fast');
 			}
 
 		} ).change();
@@ -51,7 +51,7 @@ jQuery.noConflict();
 	//On DOM Ready
 	$( function () {
 
-		toggle_mailniaga_fields();
+		toggle_mailniaga_sendy_fields();
 
 	} );
 

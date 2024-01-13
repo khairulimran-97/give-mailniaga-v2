@@ -108,10 +108,10 @@ if ( ! class_exists( 'GIVE_MAILNIAGA' ) ) {
                 return;
             }
 
-            $this->textdomain();
             $this->activation_banner();
 
             include GIVE_MAILNIAGA_PATH . '/includes/plugin-listing-page.php';
+	        include GIVE_MAILNIAGA_PATH . '/includes/class-give-mailniaga-sendy.php';
             include GIVE_MAILNIAGA_PATH . '/includes/class-give-mailniaga.php';
 
             // Load scripts.
@@ -119,37 +119,6 @@ if ( ! class_exists( 'GIVE_MAILNIAGA' ) ) {
 
         }
 
-
-        /**
-         * Load the plugin's textdomain
-         *
-         * @since 1.2.2
-         */
-        public function textdomain() {
-
-            // Set filter for language directory.
-            $lang_dir = GIVE_MAILNIAGA_DIR . '/languages/';
-            $lang_dir = apply_filters( 'GIVE_MAILNIAGA_languages_directory', $lang_dir );
-
-            // Traditional WordPress plugin locale filter.
-            $locale = apply_filters( 'plugin_locale', get_locale(), 'give-mailniaga' );
-            $mofile = sprintf( '%1$s-%2$s.mo', 'give-mailniaga', $locale );
-
-            // Setup paths to current locale file.
-            $mofile_local  = $lang_dir . $mofile;
-            $mofile_global = WP_LANG_DIR . '/give-mailniaga/' . $mofile;
-
-            if ( file_exists( $mofile_global ) ) {
-                // Look in global /wp-content/languages/give-mailniaga/ folder.
-                load_textdomain( 'give-mailniaga', $mofile_global );
-            } elseif ( file_exists( $mofile_local ) ) {
-                // Look in local /wp-content/plugins/give-mailniaga/languages/ folder.
-                load_textdomain( 'give-mailniaga', $mofile_local );
-            } else {
-                // Load the default language files.
-                load_plugin_textdomain( 'give-mailniaga', false, $lang_dir );
-            }
-        }
 
         /**
          * Load Admin Scripts
@@ -171,26 +140,30 @@ if ( ! class_exists( 'GIVE_MAILNIAGA' ) ) {
             $js_dir  = GIVE_MAILNIAGA_URL . 'assets/js/';
             $css_dir = GIVE_MAILNIAGA_URL . 'assets/css/';
 
-            wp_register_script( 'GIVE_MAILNIAGA_admin_ajax_js', $js_dir . 'admin-ajax.js', array( 'jquery' ) );
+            wp_register_script( 'give_mailniaga_admin_ajax_js', $js_dir . 'admin-ajax.js', array( 'jquery' ) );
 
             // Forms CPT Script
             if ( 'give_forms' === $post_type ) {
 
                 // CSS
-                wp_register_style( 'GIVE_MAILNIAGA_admin_css', $css_dir . 'admin-forms.css' );
-                wp_enqueue_style( 'GIVE_MAILNIAGA_admin_css' );
+                wp_register_style( 'give_mailniaga_admin_css', $css_dir . 'admin-forms.css' );
+	            wp_register_style( 'give_mailniaga_sendy_admin_css', $css_dir . 'admin-sendy-forms.css' );
+                wp_enqueue_style( 'give_mailniaga_admin_css' );
+	            wp_enqueue_style( 'give_mailniaga_sendy_admin_css' );
 
                 // JS
                 wp_register_script( 'give-mailniaga-admin-forms-scripts', $js_dir . 'admin-forms.js', array( 'jquery' ), GIVE_MAILNIAGA_VERSION, false );
+	            wp_register_script( 'give-mailniaga-sendy-admin-forms-scripts', $js_dir . 'admin-sendy-forms.js', array( 'jquery' ), GIVE_MAILNIAGA_VERSION, false );
                 wp_enqueue_script( 'give-mailniaga-admin-forms-scripts' );
+	            wp_enqueue_script( 'give-mailniaga-sendy-admin-forms-scripts' );
 
-                wp_enqueue_script( 'GIVE_MAILNIAGA_admin_ajax_js' );
+                wp_enqueue_script( 'give_mailniaga_admin_ajax_js' );
 
             }
 
             // Admin settings.
             if ( $hook == 'give_forms_page_give-settings' ) {
-                wp_enqueue_script( 'GIVE_MAILNIAGA_admin_ajax_js' );
+                wp_enqueue_script( 'give_mailniaga_admin_ajax_js' );
             }
 
         }

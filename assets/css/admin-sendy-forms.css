@@ -1,0 +1,28 @@
+/**
+ * Give MailNiaga Admin Styles
+ */
+
+.give-mailniaga-sendy-list-wrap {
+	border: 1px solid #ccc!important;
+	background: #FDFDFD!important;
+	width: auto!important;
+	height: 200px!important;
+	overflow-y: scroll!important;
+	padding: 7px 10px!important;
+}
+
+.give-mailniaga-sendy-list-wrap label {
+	display: block!important;
+	margin-bottom: 3px!important;
+}
+
+.give-mailniaga-sendy-list-wrap label.group {
+	margin-left: 30px!important;
+	font-size: 13px!important;
+	font-style: italic!important;
+}
+
+.give-mailniaga-sendy-field-wrap .give-field-description {
+	font-size: 13px!important;
+	display:block!important;
+}
